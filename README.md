@@ -72,9 +72,15 @@ python bot.py
 
 ### Вариант A. Render (бесплатно, с оговоркой)
 
-1. Запушьте каталог `sto_bot_mvp` в GitHub. Репозиторий может быть приватным — Render видит приватные репозитории после установки GitHub App.
+1. Запушьте каталог `sto_bot_mvp` в GitHub. Репозиторий может быть приватным — Render видит приватные репозитории после установки GitHub App. Каталог уже инициализирован как git-репозиторий с первым коммитом:
+
+   ```bash
+   gh auth login
+   gh repo create sto-content-bot --private --source=. --push
+   ```
+
 2. Render Dashboard → **New** → **Blueprint** → выберите репозиторий → **Apply**.
-3. Render прочитает `render.yaml` и попросит значения для `sync: false`: `TELEGRAM_BOT_TOKEN`, `LLM_API_KEY`, `IMAGE_API_KEY`. Вставляйте прямо в форму Render — не в чат и не в файлы репозитория.
+3. Render прочитает `render.yaml` и попросит значения для `sync: false`: `TELEGRAM_BOT_TOKEN`, `LLM_API_KEY`, `IMAGE_API_KEY`. Вставляйте прямо в форму Render — не в чат и не в файлы репозитория. Если ключа картинок пока нет, впишите прочерк `-`: бот запустится, картинки будут отключены (штатный fallback на текст), ключ замените позже в **Environment**.
 4. Дождитесь статуса **Live**. Проверка: `https://<имя-сервиса>.onrender.com/healthz` → `{"status":"ok",...}`.
 5. Откройте `t.me/<username_вашего_бота>` — бот отвечает на `/start`.
 
