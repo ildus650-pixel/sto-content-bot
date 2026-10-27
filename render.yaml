@@ -1,0 +1,38 @@
+# Render Blueprint: деплой в 3 клика.
+# 1. Запушьте этот каталог в GitHub (репозиторий может быть приватным).
+# 2. Render Dashboard -> New -> Blueprint -> выберите репозиторий -> Apply.
+# 3. Render попросит значения для sync:false переменных — это и есть ваши ключи.
+services:
+  - type: web
+    name: sto-content-bot
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      # Секреты не хранятся в репозитории: Render спросит их при создании сервиса
+      # и при каждом последующем деплое из UI.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: IMAGE_API_KEY
+        sync: false
+      # Не секреты — можно править прямо здесь.
+      - key: LLM_BASE_URL
+        value: https://api.openai.com/v1
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: LLM_TEMPERATURE
+        value: "0.8"
+      - key: LLM_MAX_TOKENS
+        value: "600"
+      - key: IMAGE_PROVIDER
+        value: openai
+      - key: IMAGE_MODEL
+        value: dall-e-3
+      - key: IMAGE_SIZE
+        value: 1024x1024
+      - key: LOG_LEVEL
+        value: INFO
