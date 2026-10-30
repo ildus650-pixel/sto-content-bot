@@ -21,15 +21,21 @@ services:
         sync: false
       # Не секреты — можно править прямо здесь.
       - key: LLM_BASE_URL
-        value: https://api.openai.com/v1
+        value: https://openrouter.ai/api/v1
       - key: LLM_MODEL
-        value: gpt-4o-mini
+        value: nvidia/nemotron-3-ultra-550b-a55b:free
+      - key: LLM_FALLBACK_MODELS
+        value: openrouter/free,google/gemma-4-31b-it:free
       - key: LLM_TEMPERATURE
         value: "0.8"
       - key: LLM_MAX_TOKENS
         value: "600"
+      - key: LLM_TIMEOUT
+        value: "70"
+      - key: LLM_TOTAL_TIMEOUT
+        value: "130"
       - key: IMAGE_PROVIDER
-        value: openai
+        value: pollinations
       - key: IMAGE_MODEL
         value: dall-e-3
       - key: IMAGE_SIZE

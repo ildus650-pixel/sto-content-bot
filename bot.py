@@ -342,7 +342,8 @@ async def _generate_and_send(bot: Bot, chat_id: int, data: dict[str, Any]) -> No
     service = str(data.get("service") or "")
 
     status = await bot.send_message(
-        chat_id, "⏳ Генерирую контент... это займет 15-30 секунд"
+        chat_id,
+        "⏳ Генерирую контент... обычно 15-40 секунд, на бесплатной модели иногда дольше",
     )
 
     try:

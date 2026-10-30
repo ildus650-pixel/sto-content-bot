@@ -1,8 +1,9 @@
 """Асинхронный клиент генерации изображений.
 
-Поддерживаются два провайдера:
-* ``openai``    — POST /images/generations (DALL-E 3, gpt-image-1 и совместимые);
-* ``stability`` — POST /v2beta/stable-image/generate/core (Stable Diffusion).
+Поддерживаются провайдеры:
+* ``openai``       — POST /images/generations (DALL-E 3, gpt-image-1 и совместимые);
+* ``stability``    — POST /v2beta/stable-image/generate/core (Stable Diffusion);
+* ``pollinations`` — бесплатный Flux по GET-запросу, без ключа и регистрации.
 
 Любая проблема приводит к исключению ImageError: бот обязан уметь
 работать без картинки (fallback на текст).
@@ -13,7 +14,9 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import random
 from typing import Any, Final
+from urllib.parse import quote
 
 import aiohttp
 
@@ -133,6 +136,50 @@ async def _generate_stability(prompt: str) -> bytes:
     return payload
 
 
+async def _generate_pollinations(prompt: str) -> bytes:
+    """Бесплатная генерация без ключа: image.pollinations.ai отдаёт готовый JPEG.
+
+    Ключ не нужен, но у сервиса общие лимиты, поэтому возможны 429/502 —
+    на этот случай в generate_image есть fallback на текст без картинки.
+    """
+    settings = get_settings()
+    try:
+        width, height = (
+            int(part) for part in settings.image_size.lower().split("x", 1)
+        )
+    except ValueError:
+        width, height = 1024, 1024
+
+    url = f"https://image.pollinations.ai/prompt/{quote(prompt, safe='')}"
+    params = {
+        "width": str(width),
+        "height": str(height),
+        "nologo": "true",
+        # разный seed, чтобы «ещё вариант» давал другую картинку
+        "seed": str(random.randint(1, 2_000_000_000)),
+    }
+
+    timeout = aiohttp.ClientTimeout(total=settings.image_timeout)
+    async with (
+        aiohttp.ClientSession(timeout=timeout) as session,
+        session.get(url, params=params) as response,
+    ):
+        if response.status != 200:
+            body = (await response.text())[:300]
+            raise ImageError(f"Pollinations: HTTP {response.status}: {body}")
+
+        content_type = response.headers.get("Content-Type", "")
+        if not content_type.startswith("image/"):
+            body = (await response.text())[:300]
+            raise ImageError(f"Pollinations: не картинка ({content_type}): {body}")
+
+        payload = await response.read()
+
+    if len(payload) < 1024:
+        raise ImageError("Pollinations: слишком короткий ответ")
+    return payload
+
+
 async def generate_image(service: str) -> bytes:
     """Генерирует картинку под услугу. Бросает ImageError при любой проблеме."""
     settings = get_settings()
@@ -142,6 +189,8 @@ async def generate_image(service: str) -> bytes:
     try:
         if settings.image_provider == "stability":
             image = await _generate_stability(prompt)
+        elif settings.image_provider == "pollinations":
+            image = await _generate_pollinations(prompt)
         else:
             image = await _generate_openai(prompt)
     except ImageError:

@@ -35,10 +35,15 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = Field(default=0.8, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=600, ge=64, le=4096)
-    llm_timeout: float = Field(default=60.0, gt=0)
+    llm_timeout: float = Field(default=70.0, gt=0)
+    # Общий бюджет на перебор всех моделей: после него честно говорим «перегружен»
+    llm_total_timeout: float = Field(default=130.0, gt=0)
+    # Список резервных моделей через запятую: бесплатные модели часто отдают 429,
+    # и отказ одной не должен ронять генерацию.
+    llm_fallback_models: str = ""
 
     # --- Image ---
-    image_provider: Literal["openai", "stability"] = "openai"
+    image_provider: Literal["openai", "stability", "pollinations"] = "openai"
     image_api_key: str = ""
     image_base_url: str = "https://api.openai.com/v1"
     image_model: str = "dall-e-3"
@@ -61,11 +66,12 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _infer_image_api_key(self) -> Settings:
         """Если ключ картинок не задан, для OpenAI-совместимого провайдера
-        используем ключ LLM (обычно это один и тот же аккаунт)."""
+        используем ключ LLM (обычно это один и тот же аккаунт).
+        Pollinations работает без ключа вообще."""
         if not self.image_api_key.strip():
             if self.image_provider == "openai":
                 self.image_api_key = self.llm_api_key
-            else:
+            elif self.image_provider == "stability":
                 raise ValueError(
                     "IMAGE_API_KEY обязателен при IMAGE_PROVIDER=stability"
                 )
