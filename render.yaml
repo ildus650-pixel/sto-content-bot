@@ -40,5 +40,10 @@ services:
         value: dall-e-3
       - key: IMAGE_SIZE
         value: 1024x1024
+      # Бот сам пингует свой /healthz — иначе free-инстанс засыпает через 15 минут
+      - key: KEEPALIVE_URL
+        value: https://sto-content-bot.onrender.com/healthz
+      - key: KEEPALIVE_INTERVAL
+        value: "240"
       - key: LOG_LEVEL
         value: INFO

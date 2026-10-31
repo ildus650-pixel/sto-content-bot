@@ -28,6 +28,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     Message,
 )
+import aiohttp
 from aiohttp import web
 
 from config import get_settings
@@ -474,6 +475,19 @@ async def _health_handler(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "service": "sto-content-bot"})
 
 
+async def _self_ping_loop(url: str, interval: float) -> None:
+    """Держит free-инстанс Render живым: раз в N секунд дёргаем свой /healthz."""
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        while True:
+            try:
+                async with session.get(url) as response:
+                    logger.info("Keepalive ping -> %s", response.status)
+            except (TimeoutError, aiohttp.ClientError) as exc:
+                logger.warning("Keepalive ping failed: %s", exc)
+            await asyncio.sleep(interval)
+
+
 async def start_health_server() -> web.AppRunner | None:
     """Поднимает /healthz на $PORT, если переменная задана.
 
@@ -513,6 +527,12 @@ async def main() -> None:
     # Health-сервер поднимаем до обращения к Telegram: платформа должна
     # видеть живой порт с первой секунды.
     health_runner = await start_health_server()
+    keepalive_task: asyncio.Task[None] | None = None
+    if settings.keepalive_url:
+        keepalive_task = asyncio.create_task(
+            _self_ping_loop(settings.keepalive_url, settings.keepalive_interval)
+        )
+        logger.info("Self-ping enabled: %s every %ss", settings.keepalive_url, int(settings.keepalive_interval))
 
     logger.info(
         "Bot starting: llm=%s, image=%s", settings.llm_model, settings.image_provider
@@ -530,6 +550,10 @@ async def main() -> None:
         )
         raise SystemExit(1)
     finally:
+        if keepalive_task is not None:
+            keepalive_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await keepalive_task
         if health_runner is not None:
             await health_runner.cleanup()
         await bot.session.close()

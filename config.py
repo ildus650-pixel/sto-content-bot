@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     # --- Прочее ---
     log_level: str = "INFO"
 
+    # Render free гасит инстанс через 15 минут без входящего трафика,
+    # а Telegram-поллинг входящим трафиком не считается. Поэтому бот сам
+    # пингует свой публичный /healthz. Пусто -> самопинг выключен.
+    keepalive_url: str = ""
+    keepalive_interval: float = Field(default=240.0, ge=60.0)
+
     @field_validator("llm_base_url", "image_base_url")
     @classmethod
     def _strip_trailing_slash(cls, value: str) -> str:
